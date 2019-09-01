@@ -19,102 +19,17 @@ language: cpp
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
       sudo apt-get update -qq && sudo apt-get install -y desktop-file-utils jq zsync p7zip-full;
-      curl -LO "https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64";
-      chmod +x jq-linux64 && sudo mv jq-linux64 $(which jq);
       apt-get download libc6;
       dpkg -x libc6*.deb libc6;
     fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install jq p7zip; fi
 
 install:
-  - eval "$(curl -fsSL "https://raw.githubusercontent.com/${OSX_PORTS_CACHE}/v${FREECAD_RELEASE}/travis-helpers.sh")"
-  - # Temp patch
-  - |
-    gitHub_release_named()
-    {
-       namedReleaseAsJSON=$(gitHub_releases ${1} | jq -r --arg releaseName ${2-$release} '.[] | select(.tag_name==$releaseName)')
-       echo ${namedReleaseAsJSON}
-    }
-  - # Temp patch
-  - |
-    gitHub_release_latest_freecad()
-    {
-       latestReleaseAsTagName=$(curl -s "https://api.github.com/repos/FreeCAD/FreeCAD/releases/latest" | jq -r .tag_name)
-       echo ${latestReleaseAsTagName}
-    }
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-      curl -LO https://raw.githubusercontent.com/AppImage/AppImages/master/pkg2appimage;
-      wget "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage";
-      chmod a+x appimagetool-x86_64.AppImage;
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-      bash miniconda.sh -b -p $HOME/miniconda;
-      export PATH="$HOME/miniconda/bin:$PATH";
-    fi
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
-      bash miniconda.sh -b -p $HOME/miniconda;
-      export PATH="$HOME/miniconda/bin:$PATH";
-    fi
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q --all
-  - wget "https://github.com/FreeCAD/FreeCAD/releases/download/0.18/FreeCAD.0_18.Offline.Doc.7z"
-  - 7z x FreeCAD.0_18.Offline.Doc.7z
+  - jq --version
 
 script:
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-      cd conda/linux_stable;
-      bash ./linux_stable.sh;
-      cd ../linux_dev;
-      bash ./linux_dev.sh;
-      cd ..;
-    fi
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      cd conda/osx_stable;
-      bash ./osx_stable.sh;
-      cd ../osx_dev;
-      bash ./osx_dev.sh;
-      cd ..;
-    fi
+  - echo "Test"
 
 after_success:
-  - # Deploy stable builds to latest 
-  - DEPLOY_RELEASE_STABLE="$(gitHub_release_latest_freecad)"
-  - # Uncomment to manually set the tag name
-  - # DEPLOY_RELEASE_STABLE="0.18.3"
-  - echo "$DEPLOY_RELEASE_STABLE"
-  - |
-    if [ "$TRAVIS_OS_NAME" == "linux" -a "${DEPLOY}" == "1" ]; then
-      export deployContext=$(create_helper_context repo=${DEPLOY_REPO} auth_token=${GH_TOKEN} release=${DEPLOY_RELEASE_STABLE})
-      gitHub_prune_assets_for_release_named $deployContext ".AppImage" 0
-      export DEPLOYMENT_ARCHIVE=$(ls linux_stable/*.AppImage)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export DEPLOYMENT_ARCHIVE=$(ls linux_stable/*.AppImage.zsync)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export DEPLOYMENT_ARCHIVE=$(ls linux_stable/*.AppImage-SHA256.txt)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export deployContext=$(create_helper_context repo=${DEPLOY_REPO} auth_token=${GH_TOKEN} release=${DEPLOY_RELEASE})
-      gitHub_prune_assets_for_release_named $deployContext ".AppImage" 0
-      export DEPLOYMENT_ARCHIVE=$(ls linux_dev/*.AppImage)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export DEPLOYMENT_ARCHIVE=$(ls linux_dev/*.AppImage.zsync)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export DEPLOYMENT_ARCHIVE=$(ls linux_dev/*.AppImage-SHA256.txt)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-    fi
-  - |
-    if [ "$TRAVIS_OS_NAME" == "osx" -a "${DEPLOY}" == "1" ]; then
-      export deployContext=$(create_helper_context repo=${DEPLOY_REPO} auth_token=${GH_TOKEN} release=${DEPLOY_RELEASE_STABLE})
-      gitHub_prune_assets_for_release_named $deployContext ".dmg" 0
-      export DEPLOYMENT_ARCHIVE=$(ls osx_stable/*.dmg)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export DEPLOYMENT_ARCHIVE=$(ls osx_stable/*.dmg-SHA256.txt)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export deployContext=$(create_helper_context repo=${DEPLOY_REPO} auth_token=${GH_TOKEN} release=${DEPLOY_RELEASE})
-      gitHub_prune_assets_for_release_named $deployContext ".dmg" 0
-      export DEPLOYMENT_ARCHIVE=$(ls osx_dev/*.dmg)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-      export DEPLOYMENT_ARCHIVE=$(ls osx_dev/*.dmg-SHA256.txt)
-      gitHub_deploy_asset_to_release_named $deployContext ${DEPLOYMENT_ARCHIVE}
-    fi
+  - curl -iH "User-Agent: FreeCAD" https://api.github.com/repos/FreeCAD/FreeCAD
 
